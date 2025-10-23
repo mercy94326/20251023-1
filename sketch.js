@@ -37,7 +37,7 @@ window.addEventListener('message', function (event) {
 
 
 // =================================================================
-// 步驟二：煙火粒子類別 (Particle Class)
+// 步驟二：煙火粒子類別 (Particle Class) - **主要修正區**
 // -----------------------------------------------------------------
 
 class Particle {
@@ -48,13 +48,13 @@ class Particle {
         this.hue = hue;
         
         if (this.firework) {
-            // 火箭向上發射，給予一個初始垂直速度
-            this.vel = createVector(0, random(-14, -10)); 
+            // 火箭向上發射：放慢速度 (從 -14~-10 改為 -8~-5)
+            this.vel = createVector(0, random(-8, -5)); 
             this.acc = createVector(0, 0);
         } else {
             // 爆炸粒子，隨機方向
             this.vel = p5.Vector.random2D();
-            this.vel.mult(random(2, 8)); // 爆炸初速度
+            this.vel.mult(random(1, 4)); // 爆炸初速度變慢 (從 2~8 改為 1~4)
             this.acc = createVector(0, 0); 
         }
     }
@@ -65,9 +65,9 @@ class Particle {
     
     update() {
         if (!this.firework) {
-            this.applyForce(createVector(0, 0.25)); // 重力
-            this.vel.mult(0.92); // 空氣阻力
-            this.lifespan -= 4; // 衰減
+            this.applyForce(createVector(0, 0.15)); // 重力減少 (從 0.25 改為 0.15)
+            this.vel.mult(0.95); // 空氣阻力增加 (從 0.92 改為 0.95，減速更慢)
+            this.lifespan -= 2; // 衰減變慢，粒子停留更久 (從 4 改為 2)
         }
         
         this.vel.add(this.acc);
@@ -87,7 +87,7 @@ class Particle {
             stroke(this.hue, 255, 255, this.lifespan); 
         } else {
             // 火箭
-            strokeWeight(4);
+            strokeWeight(5); // 火箭更粗，更顯眼 (從 4 改為 5)
             stroke(this.hue, 255, 255);
         }
         point(this.pos.x, this.pos.y);
@@ -96,7 +96,7 @@ class Particle {
 
 
 // =================================================================
-// 步驟三：煙火主類別 (Firework Class)
+// 步驟三：煙火主類別 (Firework Class) - **主要修正區**
 // -----------------------------------------------------------------
 
 class Firework {
@@ -106,7 +106,8 @@ class Firework {
         this.firework = new Particle(random(width / 5, width * 4 / 5), height, this.hue, true); 
         this.exploded = false;
         this.particles = [];
-        this.explosionHeight = random(height * 0.2, height * 0.5); // 隨機爆炸高度
+        // 爆炸高度調整，確保在畫面內爆炸 (從 0.2~0.5 改為 0.3~0.6)
+        this.explosionHeight = random(height * 0.3, height * 0.6); 
     }
     
     update() {
@@ -155,7 +156,7 @@ class Firework {
 
 
 // =================================================================
-// 步驟四：p5.js setup 和 draw 邏輯
+// 步驟四：p5.js setup 和 draw 邏輯 - **主要修正區**
 // -----------------------------------------------------------------
 
 function setup() { 
@@ -175,14 +176,14 @@ function draw() {
     let percentage = (maxScore > 0) ? (finalScore / maxScore) * 100 : 0;
     
     // =================================================================
-    // A. 背景和動畫控制
+    // A. 背景和動畫控制 - 修正：降低透明度，殘影更明顯
     // -----------------------------------------------------------------
     
     if (isFullScore) {
-        // 滿分時：使用透明的黑色背景，製造殘影效果
-        background(0, 0, 0, 25); 
+        // 滿分時：使用透明的黑色背景，製造更持久的殘影效果 (25 改為 10)
+        background(0, 0, 0, 10); 
     } else {
-        // 非滿分時：使用不透明的白色背景（與原代碼風格一致）
+        // 非滿分時：使用不透明的白色背景
         background(255); 
     }
 
@@ -204,7 +205,7 @@ function draw() {
     
     // 滿分時，持續生成新的煙火
     if (isFullScore) {
-        if (random(1) < 0.1) { // 約 10% 的機率生成新煙火
+        if (random(1) < 0.1) { // 10% 的機率生成新煙火
             fireworks.push(new Firework());
         }
     } 
