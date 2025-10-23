@@ -28,7 +28,7 @@ window.addEventListener('message', function (event) {
         
         console.log("新的分數已接收:", scoreText, "是否滿分:", isFullScore); 
         
-        // H5P 分數更新時，如果 canvas 停止了，則重新啟動 draw() 迴圈
+        // 確保 draw() 迴圈啟動
         if (typeof loop === 'function') {
             loop(); 
         }
@@ -37,7 +37,7 @@ window.addEventListener('message', function (event) {
 
 
 // =================================================================
-// 步驟二：煙火粒子類別 (Particle Class) - **主要修正區**
+// 步驟二：煙火粒子類別 (Particle Class) - 優化視覺效果
 // -----------------------------------------------------------------
 
 class Particle {
@@ -48,13 +48,13 @@ class Particle {
         this.hue = hue;
         
         if (this.firework) {
-            // 火箭向上發射：放慢速度 (從 -14~-10 改為 -8~-5)
-            this.vel = createVector(0, random(-8, -5)); 
+            // 火箭向上發射，速度適中
+            this.vel = createVector(0, random(-9, -6)); 
             this.acc = createVector(0, 0);
         } else {
             // 爆炸粒子，隨機方向
             this.vel = p5.Vector.random2D();
-            this.vel.mult(random(1, 4)); // 爆炸初速度變慢 (從 2~8 改為 1~4)
+            this.vel.mult(random(1, 4)); // 爆炸初速度變慢
             this.acc = createVector(0, 0); 
         }
     }
@@ -65,9 +65,9 @@ class Particle {
     
     update() {
         if (!this.firework) {
-            this.applyForce(createVector(0, 0.15)); // 重力減少 (從 0.25 改為 0.15)
-            this.vel.mult(0.95); // 空氣阻力增加 (從 0.92 改為 0.95，減速更慢)
-            this.lifespan -= 2; // 衰減變慢，粒子停留更久 (從 4 改為 2)
+            this.applyForce(createVector(0, 0.15)); // 重力減少
+            this.vel.mult(0.95); // 緩慢減速
+            this.lifespan -= 2; // 衰減變慢，粒子停留更久
         }
         
         this.vel.add(this.acc);
@@ -82,21 +82,23 @@ class Particle {
     show() {
         // HSB 模式
         if (!this.firework) {
-            // 爆炸粒子
-            strokeWeight(3);
-            stroke(this.hue, 255, 255, this.lifespan); 
+            // 爆炸粒子：使用 fill 和 ellipse 創造光暈
+            noStroke();
+            // 讓顏色隨著壽命衰減，但保持亮度
+            fill(this.hue, 255, 255, this.lifespan * 0.8); 
+            ellipse(this.pos.x, this.pos.y, 4, 4); 
         } else {
-            // 火箭
-            strokeWeight(5); // 火箭更粗，更顯眼 (從 4 改為 5)
+            // 火箭：用 point 畫出拖尾
+            strokeWeight(5); 
             stroke(this.hue, 255, 255);
+            point(this.pos.x, this.pos.y);
         }
-        point(this.pos.x, this.pos.y);
     }
 }
 
 
 // =================================================================
-// 步驟三：煙火主類別 (Firework Class) - **主要修正區**
+// 步驟三：煙火主類別 (Firework Class)
 // -----------------------------------------------------------------
 
 class Firework {
@@ -106,14 +108,13 @@ class Firework {
         this.firework = new Particle(random(width / 5, width * 4 / 5), height, this.hue, true); 
         this.exploded = false;
         this.particles = [];
-        // 爆炸高度調整，確保在畫面內爆炸 (從 0.2~0.5 改為 0.3~0.6)
-        this.explosionHeight = random(height * 0.3, height * 0.6); 
+        this.explosionHeight = random(height * 0.3, height * 0.6); // 在畫面中間爆炸
     }
     
     update() {
         if (!this.exploded) {
             this.firework.update();
-            // 爆炸條件：到達預定高度（y 越小代表越高）
+            // 爆炸條件：到達預定高度
             if (this.firework.pos.y <= this.explosionHeight) {
                 this.exploded = true;
                 this.explode();
@@ -130,8 +131,8 @@ class Firework {
     }
     
     explode() {
-        // 滿分時粒子數量增加
-        let numParticles = 120; 
+        // 滿分時粒子數量
+        let numParticles = 150; 
         for (let i = 0; i < numParticles; i++) {
             let p = new Particle(this.firework.pos.x, this.firework.pos.y, this.hue, false);
             this.particles.push(p);
@@ -156,18 +157,29 @@ class Firework {
 
 
 // =================================================================
-// 步驟四：p5.js setup 和 draw 邏輯 - **主要修正區**
+// 步驟四：p5.js setup 和 draw 邏輯 - 實現重疊和特效
 // -----------------------------------------------------------------
 
 function setup() { 
-    // 設定 Canvas 大小
-    createCanvas(windowWidth / 2, windowHeight / 2); 
-    // 啟用 HSB 模式 (Hue, Saturation, Brightness)，方便顏色控制
+    // 保持畫布大小為視窗一半，但實現重疊
+    let canvas = createCanvas(windowWidth / 2, windowHeight / 2); 
+    
+    // !!! 關鍵：CSS 設置實現重疊和穿透 !!!
+    // 假設 H5P 內容也是置中的，這樣設置才能對齊
+    canvas.position(windowWidth / 2 - width / 2, windowHeight / 2 - height / 2); 
+    canvas.style('z-index', '9999'); // 設置高 z-index 確保在最上層
+    canvas.style('pointer-events', 'none'); // 允許點擊穿透 Canvas
+    
     colorMode(HSB); 
-    // 初始背景為白色 (當 draw() 執行時會被覆蓋)
-    background(255); 
     // 預設讓 draw() 持續運行
 } 
+
+// 確保視窗大小變化時 Canvas 仍然置中
+function windowResized() {
+    resizeCanvas(windowWidth / 2, windowHeight / 2);
+    // 重設 Canvas 位置
+    select('canvas').position(windowWidth / 2 - width / 2, windowHeight / 2 - height / 2);
+}
 
 
 function draw() { 
@@ -176,43 +188,49 @@ function draw() {
     let percentage = (maxScore > 0) ? (finalScore / maxScore) * 100 : 0;
     
     // =================================================================
-    // A. 背景和動畫控制 - 修正：降低透明度，殘影更明顯
+    // A. 背景和動畫控制 (實現延遲顯示和殘影)
     // -----------------------------------------------------------------
     
     if (isFullScore) {
-        // 滿分時：使用透明的黑色背景，製造更持久的殘影效果 (25 改為 10)
-        background(0, 0, 0, 10); 
+        // 滿分時：使用透明的黑色背景，製造光影殘留效果
+        background(0, 0, 0, 15); // 透明度 15
     } else {
-        // 非滿分時：使用不透明的白色背景
-        background(255); 
+        // 非滿分時：完全清除 Canvas，顯示下方的 H5P 內容
+        clear(); 
     }
 
     
     // =================================================================
-    // B. 煙火特效處理 (滿分時產生和顯示)
+    // B. 煙火特效處理 (新增發光效果)
     // -----------------------------------------------------------------
     
-    // 處理和顯示煙火
-    for (let i = fireworks.length - 1; i >= 0; i--) {
-        fireworks[i].update();
-        fireworks[i].show();
-        
-        // 移除已完成的煙火
-        if (fireworks[i].done()) {
-            fireworks.splice(i, 1);
-        }
-    }
-    
-    // 滿分時，持續生成新的煙火
     if (isFullScore) {
+        // 使用加法混色，使煙火粒子發光
+        blendMode(ADD);
+    
+        // 處理和顯示煙火
+        for (let i = fireworks.length - 1; i >= 0; i--) {
+            fireworks[i].update();
+            fireworks[i].show();
+            
+            // 移除已完成的煙火
+            if (fireworks[i].done()) {
+                fireworks.splice(i, 1);
+            }
+        }
+        
+        // 滿分時，持續生成新的煙火
         if (random(1) < 0.1) { // 10% 的機率生成新煙火
             fireworks.push(new Firework());
         }
     } 
 
+    // 恢復普通混色模式，確保文本和幾何圖形能正常顯示
+    blendMode(BLEND); 
+
     
     // =================================================================
-    // C. 文本和幾何圖形繪製 (放在煙火特效之上)
+    // C. 文本和幾何圖形繪製
     // -----------------------------------------------------------------
     
     textSize(80); 
